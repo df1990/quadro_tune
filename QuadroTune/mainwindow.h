@@ -65,11 +65,20 @@ private slots:
 
     void updatePIDValues();
 
+    void initTimer();
+    void deinitTimer();
+
     void on_pushButton_PIDTest_clicked();
 
     void on_pushButton_PIDTest_2_clicked();
 
     void on_comboBox_PIDSelect_currentIndexChanged(const QString &arg1);
+
+    void on_verticalSlider_Setpoint_sliderMoved(int position);
+
+    void on_verticalSlider_Thrust_sliderMoved(int position);
+
+    void on_pushButton_setControl_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -85,6 +94,13 @@ private:
     int mPIDIndex;
     int mRxCount;
     int mTxCount;
+
+    int mSetPoint;
+
+    int mInit;
+    int mDeinit;
+    int mControlIndex;
+    //int mControlData[4];
 
     void regArrayInit();
     int getFrame();

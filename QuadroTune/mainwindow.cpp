@@ -26,6 +26,18 @@ MainWindow::MainWindow(QWidget *parent) :
     mPIDIndex = 0;
     mRxCount = 0;
     mTxCount = 0;
+    mSetPoint = 0;
+    mInit = 0;
+    mDeinit = 0;
+
+    mControlIndex = 0;
+
+    /*
+    mControlData[0] = 0;
+    mControlData[1] = 0;
+    mControlData[2] = 0;
+    mControlData[3] = 0;
+    */
 
     connect(mDataTimer, SIGNAL(timeout()), this, SLOT(updatePIDPlot()));
 
@@ -64,6 +76,11 @@ void MainWindow::initPlot(void)
     ui->PIDPlot->graph(1)->setLineStyle(QCPGraph::lsNone);
     ui->PIDPlot->graph(1)->setScatterStyle(QCPScatterStyle::ssDisc);
     ui->PIDPlot->graph(1)->setVisible(true);
+
+    ui->PIDPlot->addGraph();// setValue
+    ui->PIDPlot->graph(2)->setPen(QPen(Qt::red));
+    ui->PIDPlot->graph(2)->setAntialiasedFill(false);
+    ui->PIDPlot->graph(2)->setVisible(true);
 
 
     ui->PIDPlot->xAxis->setTickLabelType(QCPAxis::ltDateTime);
@@ -327,7 +344,8 @@ void MainWindow::updateRegMap(frame f)
 {
     if((f.reg_addr < REG_COUNT) &&
        (f.reg_addr + f.reg_count - 1 < REG_COUNT) &&
-       (f.reg_count > 0 ))
+       (f.reg_count > 0 ) &&
+        (f.command == 'r'))
     {
         for(int index = 0; index < f.reg_count; index++)
         {
@@ -477,17 +495,16 @@ void MainWindow::on_pushButton_PIDTest_clicked()
         mPIDIndex = 0;
     }
 
+
     if(ui->pushButton_PIDTest->text() == "Start")
     {
-           ui->pushButton_PIDTest->setText("Stop");
-           if(mDataTimer != NULL)
-           {
-               mDataTimer->start(50);
-           }
+        mInit = 0;
+        QTimer::singleShot(100, this, SLOT(initTimer()));
     }
     else
     {
-        ui->pushButton_PIDTest->setText("Start");
+        mDeinit = 0;
+        QTimer::singleShot(100, this, SLOT(deinitTimer()));
         if(mDataTimer != NULL)
         {
             mDataTimer->stop();
@@ -495,46 +512,174 @@ void MainWindow::on_pushButton_PIDTest_clicked()
     }
 }
 
+void MainWindow::initTimer()
+{
+    frame f;
+    if(mInit == 0)
+    {
+        //Enable log
+        f.command = 'w';
+        f.reg_addr = REG_LOG_ENABLE;
+        f.reg_count = 1;
+        f.reg_values[0] = 1;
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mInit = 1;
+        QTimer::singleShot(100, this, SLOT(initTimer()));
+    }
+    else if(mInit == 1)
+    {
+        //Chagne State to flying mode
+        f.command = 'w';
+        f.reg_addr = REG_STATE;
+        f.reg_count = 1;
+        f.reg_values[0] = 1;//flying mode
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mInit = 2;
+        QTimer::singleShot(100, this, SLOT(initTimer()));
+    }
+    else if(mInit == 2)
+    {
+        //Turn motor ON
+        f.command = 'w';
+        f.reg_addr = REG_MOTOR_ENABLE;
+        f.reg_count = 1;
+        f.reg_values[0] = 0x0F;
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mInit = 3;
+
+        ui->pushButton_PIDTest->setText("Stop");
+        if(mDataTimer != NULL)
+        {
+               mDataTimer->start(25);
+        }
+    }
+
+}
+
+void MainWindow::deinitTimer()
+{
+    frame f;
+    if(mDeinit == 0)
+    {
+        //Disable log
+        f.command = 'w';
+        f.reg_addr = REG_LOG_ENABLE;
+        f.reg_count = 1;
+        f.reg_values[0] = 0;
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mDeinit = 1;
+        QTimer::singleShot(100, this, SLOT(deinitTimer()));
+    }
+    else if(mDeinit == 1)
+    {
+        //Chagne State to idle mode
+        f.command = 'w';
+        f.reg_addr = REG_STATE;
+        f.reg_count = 1;
+        f.reg_values[0] = 0;//flying mode
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mDeinit = 2;
+        QTimer::singleShot(100, this, SLOT(deinitTimer()));
+    }
+    else
+    {
+        //Turn motor FF
+        f.command = 'w';
+        f.reg_addr = REG_MOTOR_ENABLE;
+        f.reg_count = 1;
+        f.reg_values[0] = 0x00;
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+        printFrame(f,true);
+        sendFrame(f);
+        mDeinit = 3;
+        ui->pushButton_PIDTest->setText("Start");
+    }
+}
+
+
 void MainWindow::updatePIDPlot()
 {
+    static int toggle = 0;
     static int timer_count = 0;
-
-
-    int16_t rawValue = 0;
-    int16_t temp = static_cast<int16_t>(mRegArray[mDataIndex]);
-    temp = (temp & 0x00FF);
-    rawValue |= temp;
-
-    rawValue = (rawValue << 8);
-    temp = static_cast<int16_t>(mRegArray[mDataIndex + 1]);
-    temp = (temp & 0x00FF);
-    rawValue |= temp;
-
-    //double value0 = static_cast<double>(rawValue);
-    double key = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000.0;
-
-    ui->PIDPlot->graph(0)->addData(key,rawValue);
-
-    ui->PIDPlot->graph(1)->clearData();
-    ui->PIDPlot->graph(1)->addData(key,rawValue);
-
-    ui->PIDPlot->graph(0)->removeDataBefore(key-8);
-    ui->PIDPlot->xAxis->setRange(key+0.25, 8, Qt::AlignRight);
-    ui->PIDPlot->replot();
-
-    timer_count++;
-
-    //ui->statusBar->showMessage(tr("Timeout count=%1, gyro=%2").arg(QString::number(timer_count)).arg(value0));
-
     frame f;
-    f.command = 'r';
 
-    f.reg_addr = mDataIndex;
-    f.reg_count = 2;
-    f.length = FRAME_NO_PAYLOAD_LENGTH;
-    printFrame(f,true);
-    sendFrame(f);
+    if(toggle)
+    {
+        toggle = 0;
+
+        int16_t rawValue = 0;
+        int16_t temp = static_cast<int16_t>(mRegArray[mDataIndex]);
+        temp = (temp & 0x00FF);
+        rawValue |= temp;
+
+        rawValue = (rawValue << 8);
+        temp = static_cast<int16_t>(mRegArray[mDataIndex + 1]);
+        temp = (temp & 0x00FF);
+        rawValue |= temp;
+
+        //double value0 = static_cast<double>(rawValue);
+        double key = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000.0;
+
+        ui->PIDPlot->graph(0)->addData(key,rawValue);
+        ui->PIDPlot->graph(2)->addData(key,mSetPoint);
+
+
+        ui->PIDPlot->graph(1)->clearData();
+        ui->PIDPlot->graph(1)->addData(key,rawValue);
+
+        ui->PIDPlot->graph(0)->removeDataBefore(key-8);
+        ui->PIDPlot->graph(2)->removeDataBefore(key-8);
+        ui->PIDPlot->xAxis->setRange(key+0.25, 8, Qt::AlignRight);
+        ui->PIDPlot->replot();
+
+        timer_count++;
+
+        //ui->statusBar->showMessage(tr("Timeout count=%1, gyro=%2").arg(QString::number(timer_count)).arg(value0));
+
+
+        f.command = 'r';
+        f.reg_addr = mDataIndex;
+        f.reg_count = 2;
+        f.length = FRAME_NO_PAYLOAD_LENGTH;
+        printFrame(f,true);
+        sendFrame(f);
+    }
+    else
+    {
+        toggle = 1;
+
+        f.command = 'w';
+        f.reg_addr = REG_THRUST;
+        f.reg_count = 4;
+        f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
+
+        f.reg_values[0] = mRegArray[REG_THRUST];
+        f.reg_values[1] = mRegArray[REG_PITCH];
+        f.reg_values[2] = mRegArray[REG_ROLL];
+        f.reg_values[3] = mRegArray[REG_YAW];
+
+
+        printFrame(f,true);
+        sendFrame(f);
+    }
+
+
+
+
 }
+
+
+
 
 void MainWindow::on_pushButton_PIDTest_2_clicked()
 {
@@ -582,18 +727,31 @@ void MainWindow::on_pushButton_PIDTest_2_clicked()
 
 void MainWindow::on_comboBox_PIDSelect_currentIndexChanged(const QString &arg1)
 {
+
+    mRegArray[REG_PITCH] = 0;
+    mRegArray[REG_ROLL] = 0;
+    mRegArray[REG_YAW] = 0;
+
     if(arg1 == "PID_X")
     {
         mPIDIndex = REG_PID_X_PH;
+        mControlIndex = REG_PITCH;
     }
     else if(arg1 == "PID_Y")
     {
         mPIDIndex = REG_PID_Y_PH;
+        mControlIndex = REG_ROLL;
     }
     else if(arg1 == "PID_Z")
     {
         mPIDIndex = REG_PID_Z_PH;
+        mControlIndex = REG_YAW;
     }
+
+    mRegArray[REG_THRUST] = ui->verticalSlider_Thrust->value();
+    mRegArray[mControlIndex] = ui->verticalSlider_Setpoint->value();
+
+
     frame f;
     f.command = 'r';
     f.reg_addr = mPIDIndex;
@@ -644,4 +802,46 @@ void MainWindow::updatePIDValues()
     temp = (temp & 0x00FF);
     rawValue |= temp;
     ui->textEdit_PID_DValue->setText(QString::number(static_cast<int>(rawValue)));
+}
+
+#define GYRO_MAX_RANGE 250L
+#define MAX_INT16 32767L
+#define MIN_INT16 -32768L
+
+#define PITCH_MAX_RANGE 30L //max pitch rotation speed in deg/sec
+#define ROLL_MAX_RANGE 30L //max roll rotation speed in deg/sec
+#define YAW_MAX_RANGE 30L //max yaw rotation speed in deg/sec
+
+#define THRUST_MAX_VALUE MAX_INT16
+#define THRUST_MIN_VALUE 0
+
+#define PITCH_MAX_VALUE ((PITCH_MAX_RANGE * MAX_INT16)/GYRO_MAX_RANGE)
+#define PITCH_MIN_VALUE (-PITCH_MAX_VALUE)
+
+#define ROLL_MAX_VALUE ((ROLL_MAX_RANGE * MAX_INT16)/GYRO_MAX_RANGE)
+#define ROLL_MIN_VALUE (-ROLL_MAX_VALUE)
+
+#define YAW_MAX_VALUE ((YAW_MAX_RANGE * MAX_INT16)/GYRO_MAX_RANGE)
+#define YAW_MIN_VALUE (-YAW_MAX_VALUE)
+
+int16_t map(int16_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
+{
+    return (int16_t)(((int32_t)x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
+}
+
+void MainWindow::on_verticalSlider_Setpoint_sliderMoved(int position)
+{
+    ui->label_SetpointValue->setText(QString::number(position));
+}
+
+void MainWindow::on_verticalSlider_Thrust_sliderMoved(int position)
+{
+    ui->label_ThrustValue->setText(QString::number(position));
+}
+
+void MainWindow::on_pushButton_setControl_clicked()
+{
+    mRegArray[REG_THRUST] = ui->verticalSlider_Thrust->value();
+    mRegArray[mControlIndex] = ui->verticalSlider_Setpoint->value();
+    mSetPoint =  map(ui->verticalSlider_Setpoint->value(),-127,127,PITCH_MIN_VALUE,PITCH_MAX_VALUE);
 }

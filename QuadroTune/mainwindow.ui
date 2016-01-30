@@ -362,9 +362,9 @@
      <widget class="QCustomPlot" name="PIDPlot" native="true">
       <property name="geometry">
        <rect>
-        <x>260</x>
+        <x>210</x>
         <y>10</y>
-        <width>871</width>
+        <width>921</width>
         <height>641</height>
        </rect>
       </property>
@@ -485,7 +485,7 @@
         <x>30</x>
         <y>250</y>
         <width>161</width>
-        <height>231</height>
+        <height>421</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -500,8 +500,8 @@
       <widget class="QTextEdit" name="textEdit_PID_PValue">
        <property name="geometry">
         <rect>
-         <x>40</x>
-         <y>80</y>
+         <x>30</x>
+         <y>50</y>
          <width>104</width>
          <height>31</height>
         </rect>
@@ -510,8 +510,8 @@
       <widget class="QTextEdit" name="textEdit_PID_IValue">
        <property name="geometry">
         <rect>
-         <x>40</x>
-         <y>110</y>
+         <x>30</x>
+         <y>80</y>
          <width>104</width>
          <height>31</height>
         </rect>
@@ -520,8 +520,8 @@
       <widget class="QTextEdit" name="textEdit_PID_DValue">
        <property name="geometry">
         <rect>
-         <x>40</x>
-         <y>140</y>
+         <x>30</x>
+         <y>110</y>
          <width>104</width>
          <height>31</height>
         </rect>
@@ -530,8 +530,8 @@
       <widget class="QLabel" name="label_5">
        <property name="geometry">
         <rect>
-         <x>20</x>
-         <y>90</y>
+         <x>10</x>
+         <y>60</y>
          <width>16</width>
          <height>17</height>
         </rect>
@@ -543,8 +543,8 @@
       <widget class="QLabel" name="label_6">
        <property name="geometry">
         <rect>
-         <x>20</x>
-         <y>120</y>
+         <x>10</x>
+         <y>90</y>
          <width>16</width>
          <height>17</height>
         </rect>
@@ -556,8 +556,8 @@
       <widget class="QLabel" name="label_7">
        <property name="geometry">
         <rect>
-         <x>20</x>
-         <y>150</y>
+         <x>10</x>
+         <y>120</y>
          <width>16</width>
          <height>17</height>
         </rect>
@@ -569,8 +569,8 @@
       <widget class="QPushButton" name="pushButton_PIDTest_2">
        <property name="geometry">
         <rect>
-         <x>20</x>
-         <y>180</y>
+         <x>10</x>
+         <y>150</y>
          <width>99</width>
          <height>27</height>
         </rect>
@@ -582,11 +582,117 @@
       <widget class="QComboBox" name="comboBox_PIDSelect">
        <property name="geometry">
         <rect>
-         <x>50</x>
-         <y>40</y>
+         <x>70</x>
+         <y>20</y>
          <width>85</width>
          <height>27</height>
         </rect>
+       </property>
+      </widget>
+      <widget class="QSlider" name="verticalSlider_Thrust">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>220</y>
+         <width>29</width>
+         <height>141</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <number>255</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+      </widget>
+      <widget class="QSlider" name="verticalSlider_Setpoint">
+       <property name="geometry">
+        <rect>
+         <x>80</x>
+         <y>220</y>
+         <width>29</width>
+         <height>141</height>
+        </rect>
+       </property>
+       <property name="minimum">
+        <number>-127</number>
+       </property>
+       <property name="maximum">
+        <number>127</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_8">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>190</y>
+         <width>41</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Thrust</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_9">
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>190</y>
+         <width>71</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Setpoint</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton_setControl">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>390</y>
+         <width>99</width>
+         <height>27</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Set</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_ThrustValue">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>360</y>
+         <width>41</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_SetpointValue">
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>360</y>
+         <width>41</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </widget>
