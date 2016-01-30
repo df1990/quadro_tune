@@ -22,9 +22,16 @@ MainWindow::MainWindow(QWidget *parent) :
 
     mDataTimer = new QTimer(this);
 
-    int mDataIndex = 0;
+    mDataIndex = 0;
+    mPIDIndex = 0;
+    mRxCount = 0;
+    mTxCount = 0;
 
-    connect(mDataTimer, SIGNAL(timeout()), this, SLOT(updatePIDData()));
+    connect(mDataTimer, SIGNAL(timeout()), this, SLOT(updatePIDPlot()));
+
+    ui->comboBox_PIDSelect->addItem(QStringLiteral("PID_X"));
+    ui->comboBox_PIDSelect->addItem(QStringLiteral("PID_Y"));
+    ui->comboBox_PIDSelect->addItem(QStringLiteral("PID_Z"));
 
     fillPortsParameters();
     fillPortsInfo();
@@ -49,7 +56,6 @@ void MainWindow::initPlot(void)
 {
     ui->PIDPlot->addGraph();// blue line
     ui->PIDPlot->graph(0)->setPen(QPen(Qt::blue));
-    //ui->PIDPlot->graph(0)->setBrush(QBrush(QColor(240, 255, 200)));
     ui->PIDPlot->graph(0)->setAntialiasedFill(false);
     ui->PIDPlot->graph(0)->setVisible(true);
 
@@ -59,19 +65,7 @@ void MainWindow::initPlot(void)
     ui->PIDPlot->graph(1)->setScatterStyle(QCPScatterStyle::ssDisc);
     ui->PIDPlot->graph(1)->setVisible(true);
 
-    /*ui->PIDPlot->addGraph();// red line
-    ui->PIDPlot->graph(2)->setPen(QPen(Qt::red));
-    //ui->PIDPlot->graph(2)->setBrush(QBrush(QColor(240, 255, 200)));
-    //ui->PIDPlot->graph(2)->setAntialiasedFill(false);
-    ui->PIDPlot->graph(2)->setVisible(false);
 
-    ui->PIDPlot->addGraph(); // red dot
-    ui->PIDPlot->graph(3)->setPen(QPen(Qt::red));
-    ui->PIDPlot->graph(3)->setLineStyle(QCPGraph::lsNone);
-    ui->PIDPlot->graph(3)->setScatterStyle(QCPScatterStyle::ssDisc);
-    ui->PIDPlot->graph(3)->setVisible(false);*/
-
-    //ui->PIDPlot->xAxis->setTickLabelType(QCPAxis::ltNumber);
     ui->PIDPlot->xAxis->setTickLabelType(QCPAxis::ltDateTime);
     ui->PIDPlot->xAxis->setDateTimeFormat("hh:mm:ss");
     ui->PIDPlot->xAxis->setAutoTickStep(false);
@@ -302,11 +296,10 @@ int MainWindow::getFrame()
 
 void MainWindow::sendFrame(frame f)
 {
-    static int txCount = 0;
     if((NULL != mSerial) && (mSerial->isOpen()))
     {
 
-        txCount++;
+        mTxCount++;
         QByteArray txFrame;
         //Setup Header
         txFrame.append(HEADER_START_CODE);
@@ -326,7 +319,7 @@ void MainWindow::sendFrame(frame f)
 
         txFrame.append(FRAME_END_CODE);
         mSerial->write(txFrame);
-        //ui->statusBar->showMessage(tr("TX count=%1").arg(QString::number(txCount)));
+        ui->statusBar->showMessage(tr("Rx=%1, Tx=%2").arg(mRxCount).arg(mTxCount));
     }
 }
 
@@ -405,16 +398,14 @@ void MainWindow::printFrame(frame f, bool send)
 
 void MainWindow::readSerialData()
 {
-    static int rxCount = 0;
-    rxCount++;
     mSerialRxData += mSerial->readAll();
 
     while(getFrame())
     {
         printFrame(mRxFrame, false);
         updateRegMap(mRxFrame);
-        rxCount++;
-
+        mRxCount++;
+        ui->statusBar->showMessage(tr("Rx=%1, Tx=%2").arg(mRxCount).arg(mTxCount));
 
     }
 }
@@ -453,36 +444,37 @@ void MainWindow::on_pushButton_PIDTest_clicked()
     if(ui->radioButton_X_Axis->isChecked())
     {
         mDataIndex = REG_GYRO_XH;
-
+        //mPIDIndex = REG_PID_X_PH;
     }
     else if(ui->radioButton_Y_Axis->isChecked())
     {
         mDataIndex = REG_GYRO_YH;
-
+        //mPIDIndex = REG_PID_Y_PH;
     }
     else if(ui->radioButton_Z_Axis->isChecked())
     {
         mDataIndex = REG_GYRO_ZH;
-
+        //mPIDIndex = REG_PID_Z_PH;
     }
     else if(ui->radioButton_X_PID->isChecked())
     {
         mDataIndex = REG_PID_XH;
-
+        //mPIDIndex = REG_PID_X_PH;
     }
     else if(ui->radioButton_Y_PID->isChecked())
     {
         mDataIndex = REG_PID_YH;
-
+        //mPIDIndex = REG_PID_Y_PH;
     }
     else if(ui->radioButton_Z_PID->isChecked())
     {
         mDataIndex = REG_PID_ZH;
-
+        //mPIDIndex = REG_PID_Z_PH;
     }
     else
     {
         mDataIndex = 0;
+        mPIDIndex = 0;
     }
 
     if(ui->pushButton_PIDTest->text() == "Start")
@@ -503,7 +495,7 @@ void MainWindow::on_pushButton_PIDTest_clicked()
     }
 }
 
-void MainWindow::updatePIDData()
+void MainWindow::updatePIDPlot()
 {
     static int timer_count = 0;
 
@@ -518,7 +510,7 @@ void MainWindow::updatePIDData()
     temp = (temp & 0x00FF);
     rawValue |= temp;
 
-    double value0 = static_cast<double>(rawValue);
+    //double value0 = static_cast<double>(rawValue);
     double key = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000.0;
 
     ui->PIDPlot->graph(0)->addData(key,rawValue);
@@ -532,7 +524,7 @@ void MainWindow::updatePIDData()
 
     timer_count++;
 
-    ui->statusBar->showMessage(tr("Timeout count=%1, gyro=%2").arg(QString::number(timer_count)).arg(value0));
+    //ui->statusBar->showMessage(tr("Timeout count=%1, gyro=%2").arg(QString::number(timer_count)).arg(value0));
 
     frame f;
     f.command = 'r';
@@ -542,4 +534,114 @@ void MainWindow::updatePIDData()
     f.length = FRAME_NO_PAYLOAD_LENGTH;
     printFrame(f,true);
     sendFrame(f);
+}
+
+void MainWindow::on_pushButton_PIDTest_2_clicked()
+{
+    frame f;
+    f.command = 'w';
+    f.reg_addr = mPIDIndex;
+    f.reg_count = 7;
+    f.length = f.reg_count + FRAME_NO_PAYLOAD_LENGTH;
+
+    int value,valueH,valueL;
+
+    value = ui->textEdit_PID_PValue->toPlainText().toInt();
+    valueH = (value & 0x0000FF00);
+    valueL = (value & 0x000000FF);
+    valueH = (valueH >> 8);
+
+    f.reg_values[0] = valueH;
+    f.reg_values[1] = valueL;
+
+    value = ui->textEdit_PID_IValue->toPlainText().toInt();
+    valueH = (value & 0x0000FF00);
+    valueL = (value & 0x000000FF);
+    valueH = (valueH >> 8);
+
+    f.reg_values[2] = valueH;
+    f.reg_values[3] = valueL;
+
+    value = ui->textEdit_PID_DValue->toPlainText().toInt();
+    valueH = (value & 0x0000FF00);
+    valueL = (value & 0x000000FF);
+    valueH = (valueH >> 8);
+
+    f.reg_values[4] = valueH;
+    f.reg_values[5] = valueL;
+
+    f.reg_values[6] = 1;//reinit PID
+
+    if((NULL != mSerial) && mSerial->isOpen())
+    {
+        printFrame(f,true);
+        sendFrame(f);
+    }
+
+}
+
+void MainWindow::on_comboBox_PIDSelect_currentIndexChanged(const QString &arg1)
+{
+    if(arg1 == "PID_X")
+    {
+        mPIDIndex = REG_PID_X_PH;
+    }
+    else if(arg1 == "PID_Y")
+    {
+        mPIDIndex = REG_PID_Y_PH;
+    }
+    else if(arg1 == "PID_Z")
+    {
+        mPIDIndex = REG_PID_Z_PH;
+    }
+    frame f;
+    f.command = 'r';
+    f.reg_addr = mPIDIndex;
+    f.reg_count = 6;
+    f.length = FRAME_NO_PAYLOAD_LENGTH;
+    if((NULL != mSerial) && mSerial->isOpen())
+    {
+        printFrame(f,true);
+        sendFrame(f);
+    }
+    QTimer::singleShot(500, this, SLOT(updatePIDValues()));
+}
+
+void MainWindow::updatePIDValues()
+{
+    u_int16_t rawValue = 0;
+    u_int16_t temp = static_cast<u_int16_t>(mRegArray[mPIDIndex]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+
+
+    rawValue = (rawValue << 8);
+    temp = static_cast<u_int16_t>(mRegArray[mPIDIndex + 1]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+    ui->textEdit_PID_PValue->setText(QString::number(static_cast<int>(rawValue)));
+
+    rawValue = 0;
+    temp = static_cast<u_int16_t>(mRegArray[mPIDIndex + 2]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+
+
+    rawValue = (rawValue << 8);
+    temp = static_cast<u_int16_t>(mRegArray[mPIDIndex + 3]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+    ui->textEdit_PID_IValue->setText(QString::number(static_cast<int>(rawValue)));
+
+    rawValue = 0;
+    temp = static_cast<u_int16_t>(mRegArray[mPIDIndex + 4]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+
+
+    rawValue = (rawValue << 8);
+    temp = static_cast<u_int16_t>(mRegArray[mPIDIndex + 5]);
+    temp = (temp & 0x00FF);
+    rawValue |= temp;
+    ui->textEdit_PID_DValue->setText(QString::number(static_cast<int>(rawValue)));
 }

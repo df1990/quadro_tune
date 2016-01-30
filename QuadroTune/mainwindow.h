@@ -61,21 +61,30 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void updatePIDData();
+    void updatePIDPlot();
+
+    void updatePIDValues();
 
     void on_pushButton_PIDTest_clicked();
+
+    void on_pushButton_PIDTest_2_clicked();
+
+    void on_comboBox_PIDSelect_currentIndexChanged(const QString &arg1);
 
 private:
     Ui::MainWindow *ui;
 
     QTimer *mDataTimer;
+    //QTimer *mPIDResponseTimer;
     QSerialPort *mSerial;
     Settings mCurrentSettings;
     QByteArray mSerialRxData;
     frame mRxFrame;
     int mRegArray[REG_COUNT];
     int mDataIndex;
-
+    int mPIDIndex;
+    int mRxCount;
+    int mTxCount;
 
     void regArrayInit();
     int getFrame();
