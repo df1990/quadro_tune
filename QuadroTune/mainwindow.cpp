@@ -547,7 +547,7 @@ void MainWindow::initTimer()
         f.command = 'w';
         f.reg_addr = REG_MOTOR_ENABLE;
         f.reg_count = 1;
-        f.reg_values[0] = 0x0F;
+        f.reg_values[0] = 0x09;
         f.length = FRAME_NO_PAYLOAD_LENGTH + f.reg_count;
         printFrame(f,true);
         sendFrame(f);
